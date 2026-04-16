@@ -1,0 +1,92 @@
+from __future__ import annotations
+
+import asyncio
+
+from telegram import Update
+from telegram.ext import ContextTypes
+
+from configs.settings import get_settings
+from storage.repositories import Database
+from sync.sync_manager import run_sync
+
+
+def _is_authorized_chat(update: Update) -> bool:
+    chat = update.effective_chat
+    if chat is None:
+        return False
+    settings = get_settings()
+    return chat.id in settings.telegram_allowed_chat_id_set
+
+
+async def _deny_if_unauthorized(update: Update) -> bool:
+    if _is_authorized_chat(update):
+        return False
+
+    message = update.effective_message
+    if message is not None:
+        await message.reply_text("This chat is not authorized.")
+    return True
+
+
+def _format_sync_result(result: dict[str, object]) -> str:
+    if result["status"] == "success":
+        return (
+            "✅ Sync success\n"
+            f"Inserted: {result['rows_inserted']}\n"
+            f"Updated: {result['rows_updated']}\n"
+            f"Skipped: {result['rows_skipped']}"
+        )
+
+    return (
+        "❌ Sync failed\n"
+        f"Error: {result['error_message']}"
+    )
+
+
+def _format_positions(rows: list[dict[str, object]]) -> str:
+    if not rows:
+        return "No positions found in the SQLite cache."
+
+    lines = ["Positions"]
+    for row in rows:
+        source = row["source"] if row["source"] is not None else "-"
+        priority = row["priority"] if row["priority"] is not None else "-"
+        lines.extend(
+            [
+                "",
+                f"Ticker: {row['ticker']}",
+                f"Shares: {row['shares']}",
+                f"Avg Cost: {row['avg_cost']}",
+                f"Source: {source}",
+                f"Priority: {priority}",
+                f"Last Synced: {row['last_synced_at']}",
+            ]
+        )
+    return "\n".join(lines)
+
+
+async def sync_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    del context
+    if await _deny_if_unauthorized(update):
+        return
+
+    message = update.effective_message
+    if message is None:
+        return
+
+    result = await asyncio.to_thread(run_sync)
+    await message.reply_text(_format_sync_result(result))
+
+
+async def positions_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    del context
+    if await _deny_if_unauthorized(update):
+        return
+
+    message = update.effective_message
+    if message is None:
+        return
+
+    database = Database()
+    rows = await asyncio.to_thread(database.fetch_all_positions)
+    await message.reply_text(_format_positions(rows))
