@@ -139,6 +139,16 @@ def _format_ticker_detail(
     return "\n".join(lines)
 
 
+def _format_help_message() -> str:
+    return (
+        "AQPA Commands\n\n"
+        "/sync - sync Google Sheets to SQLite\n"
+        "/positions - show current cached positions\n"
+        "/watchlist - show current cached watchlist\n"
+        "/ticker <ticker> - show merged detail for one ticker"
+    )
+
+
 async def sync_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     del context
     if await _deny_if_unauthorized(update):
@@ -203,3 +213,15 @@ async def ticker_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         database.fetch_watchlist_item_by_ticker, ticker
     )
     await message.reply_text(_format_ticker_detail(ticker, position, watchlist_item))
+
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    del context
+    if await _deny_if_unauthorized(update):
+        return
+
+    message = update.effective_message
+    if message is None:
+        return
+
+    await message.reply_text(_format_help_message())

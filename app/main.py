@@ -4,6 +4,7 @@ from telegram.ext import CommandHandler
 
 from adapters.telegram_client import build_application
 from bots.handlers import (
+    help_command,
     positions_command,
     sync_command,
     ticker_command,
@@ -24,6 +25,7 @@ def main() -> None:
     application.add_handler(CommandHandler("positions", positions_command))
     application.add_handler(CommandHandler("watchlist", watchlist_command))
     application.add_handler(CommandHandler("ticker", ticker_command))
+    application.add_handler(CommandHandler("help", help_command))
     application.run_polling()
 
 
