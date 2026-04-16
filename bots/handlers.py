@@ -65,6 +65,30 @@ def _format_positions(rows: list[dict[str, object]]) -> str:
     return "\n".join(lines)
 
 
+def _format_watchlist(rows: list[dict[str, object]]) -> str:
+    if not rows:
+        return "Watchlist is empty."
+
+    lines = ["Watchlist"]
+    for row in rows:
+        notes = row["notes"] if row["notes"] is not None else "-"
+        tracking_status = (
+            row["tracking_status"] if row["tracking_status"] is not None else "-"
+        )
+        priority = row["priority"] if row["priority"] is not None else "-"
+        lines.extend(
+            [
+                "",
+                f"Ticker: {row['ticker']}",
+                f"Notes: {notes}",
+                f"Tracking Status: {tracking_status}",
+                f"Priority: {priority}",
+                f"Last Synced: {row['last_synced_at']}",
+            ]
+        )
+    return "\n".join(lines)
+
+
 async def sync_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     del context
     if await _deny_if_unauthorized(update):
@@ -90,3 +114,17 @@ async def positions_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     database = Database()
     rows = await asyncio.to_thread(database.fetch_all_positions)
     await message.reply_text(_format_positions(rows))
+
+
+async def watchlist_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    del context
+    if await _deny_if_unauthorized(update):
+        return
+
+    message = update.effective_message
+    if message is None:
+        return
+
+    database = Database()
+    rows = await asyncio.to_thread(database.fetch_all_watchlist)
+    await message.reply_text(_format_watchlist(rows))

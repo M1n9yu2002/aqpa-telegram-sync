@@ -43,6 +43,16 @@ class Database:
             rows = conn.execute(query).fetchall()
         return [dict(row) for row in rows]
 
+    def fetch_all_watchlist(self) -> list[dict[str, Any]]:
+        query = """
+        SELECT ticker, notes, tracking_status, priority, last_synced_at
+        FROM watchlist
+        ORDER BY priority ASC, ticker ASC
+        """
+        with self.connect() as conn:
+            rows = conn.execute(query).fetchall()
+        return [dict(row) for row in rows]
+
     def fetch_positions_by_ticker(
         self,
         conn: sqlite3.Connection | None = None,

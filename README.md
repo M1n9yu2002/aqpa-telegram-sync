@@ -8,6 +8,7 @@ AQPA 是一個以 Google Sheets 為資料來源、SQLite 為本地快取、Teleg
 - 驗證與正規化資料
 - 同步進本地 SQLite
 - 透過 Telegram 指令觸發同步與查詢持股
+- 透過 Telegram 指令查詢觀察清單
 
 ---
 
@@ -24,7 +25,19 @@ AQPA 是一個以 Google Sheets 為資料來源、SQLite 為本地快取、Teleg
 - `event_log` 紀錄同步錯誤
 - Telegram `/sync` 指令
 - Telegram `/positions` 指令
+- Telegram `/watchlist` 指令
 - 限制只有允許的 Telegram chat ID 可使用 bot
+
+---
+
+## Manual test results (04/16)
+
+Tested cases:
+- Initial sync with unchanged sheet data: success, skipped existing rows
+- Insert case: adding a new valid row inserted 1 row
+- Update case: modifying an existing row updated 1 row
+- Idempotent re-run: no duplicate inserts, rows skipped correctly
+- Failure case: invalid ticker `abc` caused validation failure with clear error message
 
 ---
 
