@@ -58,7 +58,7 @@ def _sync_positions(
     counts: dict[str, int],
     conn: sqlite3.Connection,
 ) -> None:
-    existing_rows = database.fetch_positions_by_ticker(conn=conn)
+    existing_rows = database.fetch_positions_map(conn=conn)
 
     for row in validated_rows:
         checksum = _position_checksum(row)
@@ -104,7 +104,7 @@ def _sync_watchlist(
     counts: dict[str, int],
     conn: sqlite3.Connection,
 ) -> None:
-    existing_rows = database.fetch_watchlist_by_ticker(conn=conn)
+    existing_rows = database.fetch_watchlist_map(conn=conn)
 
     for row in validated_rows:
         checksum = _watchlist_checksum(row)

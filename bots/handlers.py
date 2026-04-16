@@ -7,6 +7,7 @@ from telegram.ext import ContextTypes
 
 from configs.settings import get_settings
 from storage.repositories import Database
+from sync.normalizer import is_valid_taiwan_ticker, normalize_ticker
 from sync.sync_manager import run_sync
 
 
@@ -89,6 +90,55 @@ def _format_watchlist(rows: list[dict[str, object]]) -> str:
     return "\n".join(lines)
 
 
+def _format_ticker_detail(
+    ticker: str,
+    position: dict[str, object] | None,
+    watchlist_item: dict[str, object] | None,
+) -> str:
+    if position is None and watchlist_item is None:
+        return f"Ticker not found: {ticker}"
+
+    lines = [f"Ticker Detail: {ticker}"]
+
+    if position is not None:
+        source = position["source"] if position["source"] is not None else "-"
+        priority = position["priority"] if position["priority"] is not None else "-"
+        lines.extend(
+            [
+                "",
+                "[Position]",
+                f"Shares: {position['shares']}",
+                f"Avg Cost: {position['avg_cost']}",
+                f"Source: {source}",
+                f"Priority: {priority}",
+                f"Last Synced: {position['last_synced_at']}",
+            ]
+        )
+
+    if watchlist_item is not None:
+        notes = watchlist_item["notes"] if watchlist_item["notes"] is not None else "-"
+        tracking_status = (
+            watchlist_item["tracking_status"]
+            if watchlist_item["tracking_status"] is not None
+            else "-"
+        )
+        priority = (
+            watchlist_item["priority"] if watchlist_item["priority"] is not None else "-"
+        )
+        lines.extend(
+            [
+                "",
+                "[Watchlist]",
+                f"Notes: {notes}",
+                f"Tracking Status: {tracking_status}",
+                f"Priority: {priority}",
+                f"Last Synced: {watchlist_item['last_synced_at']}",
+            ]
+        )
+
+    return "\n".join(lines)
+
+
 async def sync_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     del context
     if await _deny_if_unauthorized(update):
@@ -128,3 +178,28 @@ async def watchlist_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     database = Database()
     rows = await asyncio.to_thread(database.fetch_all_watchlist)
     await message.reply_text(_format_watchlist(rows))
+
+
+async def ticker_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if await _deny_if_unauthorized(update):
+        return
+
+    message = update.effective_message
+    if message is None:
+        return
+
+    if not context.args:
+        await message.reply_text("Usage: /ticker <ticker>")
+        return
+
+    ticker = normalize_ticker(context.args[0])
+    if not is_valid_taiwan_ticker(ticker):
+        await message.reply_text("Usage: /ticker <ticker>")
+        return
+
+    database = Database()
+    position = await asyncio.to_thread(database.fetch_position_by_ticker, ticker)
+    watchlist_item = await asyncio.to_thread(
+        database.fetch_watchlist_item_by_ticker, ticker
+    )
+    await message.reply_text(_format_ticker_detail(ticker, position, watchlist_item))

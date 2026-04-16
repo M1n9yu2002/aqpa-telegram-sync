@@ -53,7 +53,7 @@ class Database:
             rows = conn.execute(query).fetchall()
         return [dict(row) for row in rows]
 
-    def fetch_positions_by_ticker(
+    def fetch_positions_map(
         self,
         conn: sqlite3.Connection | None = None,
     ) -> dict[str, dict[str, Any]]:
@@ -70,7 +70,7 @@ class Database:
             if owns_connection:
                 active_conn.close()
 
-    def fetch_watchlist_by_ticker(
+    def fetch_watchlist_map(
         self,
         conn: sqlite3.Connection | None = None,
     ) -> dict[str, dict[str, Any]]:
@@ -83,6 +83,44 @@ class Database:
         try:
             rows = active_conn.execute(query).fetchall()
             return {row["ticker"]: dict(row) for row in rows}
+        finally:
+            if owns_connection:
+                active_conn.close()
+
+    def fetch_position_by_ticker(
+        self,
+        ticker: str,
+        conn: sqlite3.Connection | None = None,
+    ) -> dict[str, Any] | None:
+        query = """
+        SELECT ticker, shares, avg_cost, source, priority, last_synced_at
+        FROM positions
+        WHERE ticker = ?
+        """
+        owns_connection = conn is None
+        active_conn = self._get_connection(conn, self.db_path)
+        try:
+            row = active_conn.execute(query, (ticker,)).fetchone()
+            return dict(row) if row is not None else None
+        finally:
+            if owns_connection:
+                active_conn.close()
+
+    def fetch_watchlist_item_by_ticker(
+        self,
+        ticker: str,
+        conn: sqlite3.Connection | None = None,
+    ) -> dict[str, Any] | None:
+        query = """
+        SELECT ticker, notes, tracking_status, priority, last_synced_at
+        FROM watchlist
+        WHERE ticker = ?
+        """
+        owns_connection = conn is None
+        active_conn = self._get_connection(conn, self.db_path)
+        try:
+            row = active_conn.execute(query, (ticker,)).fetchone()
+            return dict(row) if row is not None else None
         finally:
             if owns_connection:
                 active_conn.close()
